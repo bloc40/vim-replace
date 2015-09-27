@@ -1,20 +1,38 @@
 "==========================================================================================
-" File:           replace.vim
+" File:           vim-replace.vim
 " Author:         Jamal El Milahi
 " Date:           Mar 1, 2012
-" Version:        0.0.1
-" Description:    replace.vim will let you do find and replace throughout your application
+" Version:        0.0.2
+" Description:    vim-replace.vim will let you do find and replace throughout
+"                 your application
 "==========================================================================================
 "
 " global find and replace
-" e.g. (default are Ruby files):                        :Replace old new
-" e.g. (for non Ruby files you specify the extension):  :Replace old new js
+" e.g. :Replace old new
 
-command! -nargs=+ Replace :call Replace(<f-args>)
-
-function! Replace(from, to, ...)
-  let extension = a:0 > 0 ? a:1 : 'rb'
-  exe 'args **/*.'. extension
-  exe 'argdo %s/'. a:from .'/'. a:to .'/gcIe | update'
+function! s:searcher()
+  if exists(':Ag')
+    return ':Ag! '
+  else if exists(':Ack')
+    return ':Ack! '
+  else
+    return 'You need to have Ag or Ack installed before using this plugin' | exit
+  endif
 endfunction
 
+function! s:quickfix_filename()
+  let l:buffer_numbers = {}
+  for quickfix_item in getqflist()
+    let l:buffer_numbers[quickfix_item['bufnr']] = bufname(quickfix_item['bufnr'])
+  endfor
+  return join(map(values(l:buffer_numbers), 'fnameescape(v:val)'))
+endfunction
+
+command! -nargs=1 -complete=command -bang Qfdo exe 'args ' . s:quickfix_filename() | argdo<bang> <args>
+function! s:find_and_replace(old, new)
+  exec s:searcher() . a:old
+  exec ':q'
+  exec ':Qfdo %s/' . a:old . '/' . a:new . '/gcIe | update'
+endfunction
+
+command! -nargs=+ Replace call s:find_and_replace(<f-args>)
